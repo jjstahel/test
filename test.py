@@ -66,3 +66,18 @@ if st.button("Vorschläge anzeigen"):
                 if info['thumbnail']:
                     st.image(info['thumbnail'], width=150)
                 st.markdown("---")
+
+
+
+
+
+
+def fetch_books(query):
+    url = f"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=10&key={API_KEY}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.json().get('items', [])
+    else:
+        st.error(f"Fehler beim Abrufen der Daten: {response.status_code}")
+        st.json(response.json())  # Zeigt genaue Details des Fehlers
+        return []
