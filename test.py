@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 
 # API-Key festlegen
-API_KEY = "AIzaSyCR0ngXFex4uVhkcE07WYQVylRlHqRM-lE"
+API_KEY = "AIzaSyDoQz8vEcuINx70zzQYLg5VTZLVel7qHsE"
 
 # Funktion, um Daten von der Google Books API abzurufen
 def fetch_books(query):
