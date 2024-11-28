@@ -1,26 +1,23 @@
 import streamlit as st
 import requests
 
-# API-Key festlegen
 API_KEY = "AIzaSyDoQz8vEcuINx70zzQYLg5VTZLVel7qHsE"
 
-# Funktion, um Daten von der Google Books API abzurufen
 def fetch_books(query):
-    url = f"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=10&key={API_KEY}"
+    country = "DE"  # Standortparameter für Deutschland
+    url = f"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=10&key={API_KEY}&country={country}"
     response = requests.get(url)
     if response.status_code == 200:
         return response.json().get('items', [])
     else:
         st.error(f"Fehler beim Abrufen der Daten: {response.status_code}")
         try:
-            # Versuche, die genaue Fehlermeldung auszugeben
             error_details = response.json()
-            st.json(error_details)  # Zeigt die gesamte Fehlerantwort als JSON
+            st.json(error_details)
         except ValueError:
-            st.write("Keine zusätzliche Fehlermeldung verfügbar.")  # Falls die Antwort kein JSON enthält
+            st.write("Keine zusätzliche Fehlermeldung verfügbar.")
         return []
 
-# Funktion, um Buchdetails zu extrahieren
 def extract_book_info(book):
     volume_info = book.get('volumeInfo', {})
     sale_info = book.get('saleInfo', {})
@@ -45,11 +42,9 @@ def extract_book_info(book):
         "thumbnail": thumbnail
     }
 
-# Streamlit App Layout
 st.title("Büchervorschläge mit Google Books API")
 st.markdown("Gib ein Buch oder einen Autor ein, der dir gefallen hat, und erhalte Vorschläge!")
 
-# Eingabe durch den Nutzer
 query = st.text_input("Suchbegriff (z.B. ein Buch oder Autor)", "")
 
 if st.button("Vorschläge anzeigen"):
