@@ -1,9 +1,12 @@
 import streamlit as st
 import requests
 
+# API-Key festlegen
+API_KEY = "AIzaSyDoQz8vEcuINx70zzQYLg5VTZLVel7qHsE"
+
 # Funktion, um Daten von der Google Books API abzurufen
-def fetch_books(query, api_key):
-    url = f"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=10&key={api_key}"
+def fetch_books(query):
+    url = f"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=10&key={API_KEY}"
     response = requests.get(url)
     if response.status_code == 200:
         return response.json().get('items', [])
@@ -42,15 +45,12 @@ st.markdown("Gib ein Buch oder einen Autor ein, der dir gefallen hat, und erhalt
 
 # Eingabe durch den Nutzer
 query = st.text_input("Suchbegriff (z.B. ein Buch oder Autor)", "")
-api_key = st.text_input("Google Books API Key", type="password")
 
 if st.button("Vorschläge anzeigen"):
     if not query:
         st.warning("Bitte gib einen Suchbegriff ein.")
-    elif not api_key:
-        st.warning("Bitte gib einen gültigen Google Books API Key ein.")
     else:
-        books = fetch_books(query, api_key)
+        books = fetch_books(query)
         
         if not books:
             st.info("Keine Ergebnisse gefunden. Versuche es mit einem anderen Suchbegriff.")
@@ -66,4 +66,3 @@ if st.button("Vorschläge anzeigen"):
                 if info['thumbnail']:
                     st.image(info['thumbnail'], width=150)
                 st.markdown("---")
-
