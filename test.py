@@ -67,3 +67,47 @@ if st.button("Vorschläge anzeigen"):
                 if info['thumbnail']:
                     st.image(info['thumbnail'], width=150)
                 st.markdown("---")
+
+
+
+# Quick Search
+st.sidebar.subheader("Quick Book Search")
+search_query = st.sidebar.text_input("Search for a book title or author:")
+
+if search_query:
+    with st.spinner("Searching..."):
+        search_results = fetch_books(search_query)
+        if search_results:
+            st.sidebar.write("Search Results:")
+            for result in search_results:
+                st.sidebar.write(result["title"])
+        else:
+            st.sidebar.write("No results found.")
+
+
+# List of genres and their respective subgenres
+genres_and_subgenres = {
+    "Fiction": ["Historical Fiction", "Science Fiction", "Fantasy", "Literary Fiction"],
+    "Romance": ["Contemporary Romance", "Historical Romance", "Paranormal Romance", "Romantic Comedy"],
+    "Science": ["Physics", "Biology", "Astronomy", "Chemistry", "Earth Science"],
+    "Mystery": ["Cozy Mystery", "Crime Thriller", "Detective Fiction", "Noir"],
+    "History": ["Ancient History", "Medieval History", "Modern History", "Military History"],
+    "Fantasy": ["Epic Fantasy", "Urban Fantasy", "Dark Fantasy", "Sword and Sorcery"],
+    "Biography": ["Memoir", "Autobiography", "Political Biography", "Celebrity Biography"]
+}
+
+# Always display the sidebar for navigation
+st.sidebar.title("Navigation")
+st.sidebar.write("Explore the world of genres, we're sure you'll find something!")
+
+# Add genres and subgenres to the sidebar
+st.sidebar.subheader("Browse Genres")
+for genre, subgenres in genres_and_subgenres.items():
+    with st.sidebar.expander(genre):
+        for subgenre in subgenres:
+            st.write(f"- {subgenre}")
+
+# Quick metrics shown on sidebar
+st.sidebar.title("Quick Stats")
+st.sidebar.metric(label="Total Genres", value=len(genres_and_subgenres))
+st.sidebar.metric(label="Average Rating Filter", value=min_rating)
