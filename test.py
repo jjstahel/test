@@ -5,17 +5,24 @@ import requests
 API_KEY = "AIzaSyDoQz8vEcuINx70zzQYLg5VTZLVel7qHsE"
 
 # Funktion, um Daten von der Google Books API abzurufen
-def fetch_books(query, genre_filter, price_min, price_max):
+def fetch_books(query, genre_filter, price_min, price_max, default_query=False):
     country = "DE"  # Standortparameter
+
+    # Wenn kein Suchbegriff eingegeben wurde, verwenden wir den Genrefilter als Standard-Query
+    if default_query and genre_filter != "Alle Genres":
+        query = f"subject:{genre_filter}"
+
     url = f"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=40&key={API_KEY}&country={country}"
     response = requests.get(url)
+
     if response.status_code == 200:
         books = response.json().get('items', [])
-        # Bücher filtern
-        return [
+        # Bücher filtern und sortieren
+        filtered_books = [
             book for book in books
             if filter_genre(book, genre_filter) and filter_price(book, price_min, price_max)
         ]
+        return sorted(filtered_books, key=lambda b: b.get('volumeInfo', {}).get('averageRating', 0), reverse=True)
     else:
         st.error(f"Fehler beim Abrufen der Daten: {response.status_code}")
         try:
@@ -91,22 +98,21 @@ price_min, price_max = st.slider("Preisspanne auswählen (in EUR)", 0, 100, (0, 
 
 # Button für Suche
 if st.button("Vorschläge anzeigen"):
-    if not query:
-        st.warning("Bitte gib einen Suchbegriff ein.")
+    # Wenn kein Suchbegriff eingegeben wurde, Standard-Query nutzen
+    default_query = query.strip() == ""
+    books = fetch_books(query, genre_filter, price_min, price_max, default_query=default_query)
+
+    if not books:
+        st.info("Keine Ergebnisse gefunden. Versuche es mit einem anderen Suchbegriff oder ändere die Filter.")
     else:
-        books = fetch_books(query, genre_filter, price_min, price_max)
-        
-        if not books:
-            st.info("Keine Ergebnisse gefunden. Versuche es mit einem anderen Suchbegriff oder ändere die Filter.")
-        else:
-            st.subheader("Vorschläge")
-            for book in books:
-                info = extract_book_info(book)
-                st.markdown(f"### {info['title']}")
-                st.markdown(f"**Autor(en):** {info['authors']}")
-                st.markdown(f"**Genre:** {info['categories']}")
-                st.markdown(f"**Preis:** {info['price']}")
-                st.markdown(f"**Bewertung:** {info['average_rating']}")
-                if info['thumbnail']:
-                    st.image(info['thumbnail'], width=150)
-                st.markdown("---")
+        st.subheader("Vorschläge")
+        for book in books:
+            info = extract_book_info(book)
+            st.markdown(f"### {info['title']}")
+            st.markdown(f"**Autor(en):** {info['authors']}")
+            st.markdown(f"**Genre:** {info['categories']}")
+            st.markdown(f"**Preis:** {info['price']}")
+            st.markdown(f"**Bewertung:** {info['average_rating']}")
+            if info['thumbnail']:
+                st.image(info['thumbnail'], width=150)
+            st.markdown("---")
