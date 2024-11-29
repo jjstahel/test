@@ -70,6 +70,51 @@ if st.button("Vorschläge anzeigen"):
 
 
 
+
+
+# User filters
+liked_book = st.text_input("Enter a book you liked (optional):")
+genre = st.text_input("Enter a genre you like (e.g., Fiction, Romance, Science):")
+max_price = st.number_input("Maximum Price (optional):", min_value=0.0, value=50.0)
+min_rating = st.slider("Minimum Rating (out of 5):", min_value=0.0, max_value=5.0, value=3.0)
+
+# Checkbox to apply additional filters
+if st.checkbox("Apply advanced filters"):
+    year = st.slider("Year Published (optional):", min_value=1900, max_value=2024, value=(2000, 2024))
+    st.write(f"Filtering books published between {year[0]} and {year[1]}")
+    year_range = st.slider("Select publication year range:", 1900, 2024, (2000, 2024))
+    st.write(f"Filtering books published between {year_range[0]} and {year_range[1]}")
+    
+favorite_author = st.selectbox(
+    "Choose your favorite author (optional):",
+    ["", "J.K. Rowling", "George R.R. Martin", "J.R.R. Tolkien", "Agatha Christie", "Stephen King"]
+)
+if favorite_author:
+    st.write(f"Showing recommendations from {favorite_author}'s work...")
+
+sort_option = st.radio(
+    "How would you like to sort the recommendations?",
+    ("Highest Rated", "Lowest Price", "Most Recent")
+)
+st.write(f"Recommendations sorted by: {sort_option}")
+
+
+if st.button("Get Recommendations"):
+    query = ""
+    if liked_book:
+        query = liked_book
+    elif genre:
+        query = f"subject:{genre}"
+    else:
+        st.error("Please enter a book you liked or a genre.")
+        st.stop()
+    
+        # Loading spinner
+    with st.spinner('Fetching your book recommendations...'):
+        # Fetch books based on filters
+        books = fetch_books(query, max_price=max_price, min_rating=min_rating)
+
+
 # Quick Search
 st.sidebar.subheader("Quick Book Search")
 search_query = st.sidebar.text_input("Search for a book title or author:")
