@@ -1,15 +1,15 @@
 import streamlit as st
 import requests
 
-# API-Key festlegen
+# API key
 API_KEY = "AIzaSyDoQz8vEcuINx70zzQYLg5VTZLVel7qHsE"
 
-# Funktion, um Daten von der Google Books API abzurufen
+# Function to fetch books from Google Books API
 def fetch_books(query, genre_filter, price_min, price_max, default_query=False):
-    country = "DE"  # Standortparameter
+    country = "US"  # Location parameter
 
-    # Wenn kein Suchbegriff eingegeben wurde, verwenden wir den Genrefilter als Standard-Query
-    if default_query and genre_filter != "Alle Genres":
+    # Use genre filter as default query if no search term is provided
+    if default_query and genre_filter != "All Genres":
         query = f"subject:{genre_filter}"
 
     url = f"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=40&key={API_KEY}&country={country}"
@@ -17,25 +17,25 @@ def fetch_books(query, genre_filter, price_min, price_max, default_query=False):
 
     if response.status_code == 200:
         books = response.json().get('items', [])
-        # Bücher filtern und sortieren
+        # Filter and sort books
         filtered_books = [
             book for book in books
             if filter_genre(book, genre_filter) and filter_price(book, price_min, price_max)
         ]
         return sorted(filtered_books, key=lambda b: b.get('volumeInfo', {}).get('averageRating', 0), reverse=True)
     else:
-        st.error(f"Fehler beim Abrufen der Daten: {response.status_code}")
+        st.error(f"Error fetching data: {response.status_code}")
         try:
             error_details = response.json()
             st.json(error_details)
         except ValueError:
-            st.write("Keine zusätzliche Fehlermeldung verfügbar.")
+            st.write("No additional error details available.")
         return []
 
-# Funktion, um Genre zu filtern
+# Function to filter books by genre
 def filter_genre(book, genre_filter):
-    if genre_filter == "Alle Genres":
-        return True  # Kein Filter aktiv
+    if genre_filter == "All Genres":
+        return True  # No filter active
     volume_info = book.get('volumeInfo', {})
     categories = volume_info.get('categories', [])
     for category in categories:
@@ -43,30 +43,30 @@ def filter_genre(book, genre_filter):
             return True
     return False
 
-# Funktion, um Preis zu filtern
+# Function to filter books by price
 def filter_price(book, price_min, price_max):
     sale_info = book.get('saleInfo', {})
     price = sale_info.get('retailPrice', {}).get('amount', None)
-    # Bücher ohne Preis werden nicht ausgeschlossen
+    # Do not exclude books without a price
     if price is None:
         return True
-    # Preisprüfung nur für Bücher mit Preisinformationen
+    # Check if price falls within range
     return price_min <= price <= price_max
 
-# Funktion, um Buchdetails zu extrahieren
+# Function to extract book details
 def extract_book_info(book):
     volume_info = book.get('volumeInfo', {})
     sale_info = book.get('saleInfo', {})
     
-    title = volume_info.get('title', 'Nicht verfügbar')
-    authors = ", ".join(volume_info.get('authors', ['Nicht verfügbar']))
-    categories = ", ".join(volume_info.get('categories', ['Nicht verfügbar']))
-    price = sale_info.get('retailPrice', {}).get('amount', 'Nicht verfügbar')
+    title = volume_info.get('title', 'Not available')
+    authors = ", ".join(volume_info.get('authors', ['Not available']))
+    categories = ", ".join(volume_info.get('categories', ['Not available']))
+    price = sale_info.get('retailPrice', {}).get('amount', 'Not available')
     currency = sale_info.get('retailPrice', {}).get('currencyCode', '')
-    average_rating = volume_info.get('averageRating', 'Nicht bewertet')
+    average_rating = volume_info.get('averageRating', 'Not rated')
     thumbnail = volume_info.get('imageLinks', {}).get('thumbnail', None)
     
-    if price != 'Nicht verfügbar':
+    if price != 'Not available':
         price = f"{price} {currency}"
     
     return {
@@ -79,60 +79,60 @@ def extract_book_info(book):
     }
 
 # Streamlit App Layout
-st.title("Büchervorschläge mit Google Books API")
-st.markdown("Gib ein Buch oder einen Autor ein, der dir gefallen hat, und erhalte Vorschläge!")
+st.title("Book Recommendations with Google Books API")
+st.markdown("Enter a book or author you liked, and get recommendations!")
 
-# Sidebar für Genre-Auswahl
-st.sidebar.title("Entdecke Top-Bücher")
+# Sidebar for genre selection
+st.sidebar.title("Discover Top Books")
 genres_sidebar = [
-    "Alle Genres", "Fiction", "Romance", "Science", 
+    "All Genres", "Fiction", "Romance", "Science", 
     "Mystery", "History", "Fantasy", "Biography"
 ]
-selected_genre = st.sidebar.radio("Wähle ein Genre aus:", genres_sidebar)
+selected_genre = st.sidebar.radio("Select a genre:", genres_sidebar)
 
-# Wenn ein Genre in der Sidebar ausgewählt wird
-if selected_genre != "Alle Genres":
-    st.sidebar.subheader(f"Top-Bücher im Genre: {selected_genre}")
+# Display books in the selected genre
+if selected_genre != "All Genres":
+    st.sidebar.subheader(f"Top books in {selected_genre}")
     sidebar_books = fetch_books("", selected_genre, 0, 100, default_query=True)
-    for book in sidebar_books[:5]:  # Zeige die Top 5 Bücher im Sidebar-Bereich
+    for book in sidebar_books[:5]:  # Show top 5 books in the sidebar
         info = extract_book_info(book)
         st.sidebar.markdown(f"**{info['title']}**")
-        st.sidebar.markdown(f"von {info['authors']}")
-        st.sidebar.markdown(f"Bewertung: {info['average_rating']}")
+        st.sidebar.markdown(f"by {info['authors']}")
+        st.sidebar.markdown(f"Rating: {info['average_rating']}")
         st.sidebar.markdown("---")
 
-# Hauptbereich für Suchfunktion
-st.subheader("Bücher suchen")
-query = st.text_input("Suchbegriff (z.B. ein Buch oder Autor)", "")
+# Main section for search functionality
+st.subheader("Search for books")
+query = st.text_input("Search term (e.g., a book or author)", "")
 
-# Filter für Genre
+# Genre filter
 genres = [
-    "Alle Genres", "Fiction", "Romance", "Science", 
+    "All Genres", "Fiction", "Romance", "Science", 
     "Mystery", "History", "Fantasy", "Biography"
 ]
-genre_filter = st.selectbox("Filter nach Genre", genres)
+genre_filter = st.selectbox("Filter by genre", genres)
 
-# Filter für Preis
-st.markdown("Filter nach Preis:")
-price_min, price_max = st.slider("Preisspanne auswählen (in EUR)", 0, 100, (0, 100))
+# Price filter
+st.markdown("Filter by price:")
+price_min, price_max = st.slider("Select price range (in USD)", 0, 100, (0, 100))
 
-# Button für Suche
-if st.button("Vorschläge anzeigen"):
-    # Wenn kein Suchbegriff eingegeben wurde, Standard-Query nutzen
+# Search button
+if st.button("Show recommendations"):
+    # Use default query if no search term is provided
     default_query = query.strip() == ""
     books = fetch_books(query, genre_filter, price_min, price_max, default_query=default_query)
 
     if not books:
-        st.info("Keine Ergebnisse gefunden. Versuche es mit einem anderen Suchbegriff oder ändere die Filter.")
+        st.info("No results found. Try another search term or adjust the filters.")
     else:
-        st.subheader("Vorschläge")
+        st.subheader("Recommendations")
         for book in books:
             info = extract_book_info(book)
             st.markdown(f"### {info['title']}")
-            st.markdown(f"**Autor(en):** {info['authors']}")
+            st.markdown(f"**Author(s):** {info['authors']}")
             st.markdown(f"**Genre:** {info['categories']}")
-            st.markdown(f"**Preis:** {info['price']}")
-            st.markdown(f"**Bewertung:** {info['average_rating']}")
+            st.markdown(f"**Price:** {info['price']}")
+            st.markdown(f"**Rating:** {info['average_rating']}")
             if info['thumbnail']:
                 st.image(info['thumbnail'], width=150)
             st.markdown("---")
