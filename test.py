@@ -79,7 +79,7 @@ def extract_book_info(book):
     }
 
 # Streamlit App Layout
-st.title("Book Recommendations with Google Books API")
+st.title("Tale Finder")  # Updated title
 st.markdown("Enter a book or author you liked, and get recommendations!")
 
 # Sidebar for genre selection
