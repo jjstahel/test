@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import base64  # Für die Base64-Codierung des Bildes
 
 # API-Key festlegen
 API_KEY = "AIzaSyDoQz8vEcuINx70zzQYLg5VTZLVel7qHsE"
@@ -70,34 +71,43 @@ def extract_book_info(book):
         "thumbnail": thumbnail
     }
 
-# Hintergrundbild mit CSS hinzufügen
-st.markdown(
-    """
-    <style>
-        .main-title {
-            position: relative;
-            text-align: center;
-            color: white;
-            font-size: 40px;
-            padding: 20px;
-        }
-        .background {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 200px;
-            z-index: -1;
-            background: url("data:image/jpeg;base64,{image}") no-repeat center;
-            background-size: cover;
-        }
-    </style>
-    """.format(image=open("path/to/your/image.jpeg", "rb").read().decode("base64")),
-    unsafe_allow_html=True,
-)
+# Funktion, um das Bild in Base64 zu konvertieren
+def get_base64_image(image_path):
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode("utf-8")
 
-st.markdown('<div class="background"></div>', unsafe_allow_html=True)
-st.markdown('<div class="main-title">Büchervorschläge mit Google Books API</div>', unsafe_allow_html=True)
+# Hintergrundbild einfügen
+image_path = "/mnt/data/WhatsApp Image 2024-11-18 at 16.42.19.jpeg"  # Pfad zum hochgeladenen Bild
+try:
+    base64_image = get_base64_image(image_path)
+    st.markdown(
+        f"""
+        <style>
+            .main-title {{
+                position: relative;
+                text-align: center;
+                color: white;
+                font-size: 40px;
+                padding: 20px;
+            }}
+            .background {{
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 200px;
+                z-index: -1;
+                background: url("data:image/jpeg;base64,{base64_image}") no-repeat center;
+                background-size: cover;
+            }}
+        </style>
+        <div class="background"></div>
+        <div class="main-title">Büchervorschläge mit Google Books API</div>
+        """,
+        unsafe_allow_html=True,
+    )
+except FileNotFoundError:
+    st.error("Das Hintergrundbild wurde nicht gefunden. Bitte überprüfe den Dateipfad.")
 
 # Sidebar
 st.sidebar.title("Entdecke Top-Bücher")
