@@ -40,8 +40,10 @@ def filter_genre(book, genre_filter):
 def filter_price(book, price_min, price_max):
     sale_info = book.get('saleInfo', {})
     price = sale_info.get('retailPrice', {}).get('amount', None)
+    # Bücher ohne Preis werden nicht ausgeschlossen
     if price is None:
-        return False  # Buch hat keinen Preis
+        return True
+    # Preisprüfung nur für Bücher mit Preisinformationen
     return price_min <= price <= price_max
 
 # Funktion, um Buchdetails zu extrahieren
