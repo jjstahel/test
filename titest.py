@@ -2,25 +2,25 @@ import streamlit as st
 import requests
 import matplotlib.pyplot as plt
 import seaborn as sns
-from urllib.parse import quote  # Import URL encoding
+from urllib.parse import quote  #import the URL encoding
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import pandas as pd
 
-# API key
+#insert the API key
 API_KEY = "AIzaSyDoQz8vEcuINx70zzQYLg5VTZLVel7qHsE"
 
-# Initialize session state for ratings if not already set
+#if the user has not rated books yet, then a dictionary is opened for them and new ratings will be inserted there
 if "user_ratings" not in st.session_state:
     st.session_state.user_ratings = {}
 
-# Function to fetch books from Google Books API
+#get the books from the Google API
 def fetch_books(query, genre_filter, price_min, price_max, default_query=False):
-    country = "US"  # Location Parameter
+    country = "US"  #keep the location to the US to only give books in English. Our Google accounts are in German, so this was necessary
     if default_query:
         query = f"subject:{genre_filter}" if genre_filter != "All Genres" else "subject:fiction"
     
-    # URL encode query to avoid issues with special characters
+    #URL encode query to avoid issues with special characters
     query = quote(query)
     
     url = f"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=40&key={API_KEY}&country={country}"
@@ -42,7 +42,7 @@ def fetch_books(query, genre_filter, price_min, price_max, default_query=False):
             st.write("No additional error details available.")
         return []
 
-# Function to filter books by genre
+#filter the books by genere. Romance and Fantasy are included in Fiction 
 def filter_genre(book, genre_filter):
     if genre_filter == "All Genres":
         return True
@@ -53,16 +53,16 @@ def filter_genre(book, genre_filter):
             return True
     return False
 
-# Function to filter books by price
+#the books are filtered by price 
 def filter_price(book, price_min, price_max):
     sale_info = book.get("saleInfo", {})
     retail_price = sale_info.get("retailPrice")
     if not retail_price or "amount" not in retail_price:
-        return True  # Keep books without a defined price
+        return True  #also give books that do not have a price. Just show them without a price 
     price = retail_price["amount"]
     return price_min <= price <= price_max
 
-# Function to extract book details
+#give informations about the books such as the title, the author and the price 
 def extract_book_info(book):
     volume_info = book.get("volumeInfo", {})
     sale_info = book.get("saleInfo", {})
@@ -88,7 +88,7 @@ def extract_book_info(book):
         "user_rating": user_rating,
     }
 
-#Function to recommend books based on user ratings
+#the rated books are then saved and new books are recommended based on them 
 def recommend_books_based_on_ratings (books, user_ratings):
     book_data = []
     for book in books: 
@@ -121,7 +121,7 @@ def recommend_books_based_on_ratings (books, user_ratings):
     recommendations_df = pd.DataFrame(recommendations).drop_duplicates (subset="title")
     return recommendations_df.to_dict(orient="records")
 
-#Function to change theme between dark and light
+#the website can switch between dark and light mode
 def set_theme(theme):
     if theme == "Dark":
         st.markdown(
@@ -220,26 +220,27 @@ def set_theme(theme):
             unsafe_allow_html=True,
         )
 
-# Streamlit App Layout
+#the app layout with the title 
 st.title("Tale Finder")
 st.markdown("Rate a book you read, and get recommendations what to read next!")
 
-# Sidebar for navigation and theme selection
+#Sidebar design with the theme
 st.sidebar.title("Discover Top Books")
-theme = st.sidebar.radio("Choose Theme", ["Light", "Dark"]) #Add theme toggle
-set_theme(theme) #Apply selected theme
+theme = st.sidebar.radio("Choose Theme", ["Light", "Dark"]) #theme determination 
+set_theme(theme) #set the selected theme
 
+#set the sidebars for generes
 genres_sidebar = [
     "All Genres", "Fiction", "Science", 
     "Mystery", "History", "Biography"
 ]
 selected_genre = st.sidebar.radio("Select a genre:", genres_sidebar)
 
-#Display top books in sidebar
+#show the top books in the sidebar 
 if selected_genre != "All Genres":
     st.sidebar.subheader(f"Top books in {selected_genre}")
     sidebar_books = fetch_books("", selected_genre, 0, 100, default_query=True)
-    for book in sidebar_books[:5]: #Show top 5 books in the sidebar
+    for book in sidebar_books[:5]: #show the top 5 books in the sidebar
         info = extract_book_info(book)
         st.sidebar.markdown(f"**{info['title']}**")
         st.sidebar.markdown(f"by {info['authors']}")
@@ -249,7 +250,7 @@ if selected_genre != "All Genres":
 st.sidebar.title("Navigate")
 page = st.sidebar.selectbox("Go to", ["Book Recommendations", "My Ratings and Visualizations"])
 
-# Main section
+#this displays the main page with the search bar etc. 
 if page == "Book Recommendations":
     st.subheader("Search for books")
     query = st.text_input("Search term (e.g., a book or author)", "")
@@ -264,7 +265,7 @@ if page == "Book Recommendations":
     if st.button("Rate books"):
         default_query = query.strip() == ""
         books = fetch_books(query, genre_filter, price_min, price_max, default_query=default_query)
-        st.session_state.books = books  # Save books in session state
+        st.session_state.books = books  #the user ratings are saved in the dictionary 
     else:
         books = st.session_state.get("books", [])
         
@@ -282,15 +283,15 @@ if page == "Book Recommendations":
             if info['thumbnail']:
                 st.image(info['thumbnail'], width=150)
             
-            # Display slider to rate the book 
-            current_rating = st.session_state.user_ratings.get(info['title'], 3)  # Default to 3 if no rating
+            #have a slider bar to rate the books from 1 to 5  
+            current_rating = st.session_state.user_ratings.get(info['title'], 3)  #if no rating was manually given, set it to 3 as a default 
             rating = st.slider(
                 f"Rate '{info['title']}'", 
                 1, 5, value=current_rating, 
                 key=f"slider_{info['title']}"
             )
 
-            # Button to save rating                   
+            #have a button to save the rating into the dictionary                  
             if st.button(f"Save rating for '{info['title']}'", key=f"save_{info['title']}"):
                 st.session_state.user_ratings[info['title']] = rating
                 st.success(f"Rating for '{info['title']}' saved!")
@@ -304,7 +305,7 @@ elif page == "My Ratings and Visualizations":
     else:
         st.subheader("Ratings Distribution")
 
-        # Create a histogram of the ratings
+        #visualization through creating a histogram from the ratings  
         ratings = list(st.session_state.user_ratings.values())
         plt.figure(figsize=(8, 4))
         sns.histplot(ratings, bins=5, kde=False, color="blue")
@@ -320,7 +321,7 @@ elif page == "My Ratings and Visualizations":
         ]
         st.table(rated_books)
 
-        #Content-based Recommendations
+        #create content-based recommendations based on the ratings of past read books 
         st.subheader ("New Recommendations Based on Your Ratings")
         if "books" in st.session_state and st.session_state.user_ratings:
             recommendations = recommend_books_based_on_ratings(
