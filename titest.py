@@ -1,7 +1,8 @@
 import streamlit as st
 import requests
 import matplotlib.pyplot as plt
-from urllib.parse import quote
+import seaborn as sns
+from urllib.parse import quote  # Import URL encoding
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import pandas as pd
@@ -9,29 +10,36 @@ import pandas as pd
 # API key
 API_KEY = "AIzaSyDoQz8vEcuINx70zzQYLg5VTZLVel7qHsE"
 
-# Initialize session state for books and ratings if not already set
+# Initialize session state for ratings if not already set
 if "user_ratings" not in st.session_state:
     st.session_state.user_ratings = {}
 
-if "books" not in st.session_state:
-    st.session_state.books = []
-
 # Function to fetch books from Google Books API
 def fetch_books(query, genre_filter, price_min, price_max, default_query=False):
-    country = "US"
+    country = "US"  # Location Parameter
     if default_query:
         query = f"subject:{genre_filter}" if genre_filter != "All Genres" else "subject:fiction"
+    
+    # URL encode query to avoid issues with special characters
     query = quote(query)
+    
     url = f"https://www.googleapis.com/books/v1/volumes?q={query}&maxResults=40&key={API_KEY}&country={country}"
     response = requests.get(url)
+    
     if response.status_code == 200:
         books = response.json().get("items", [])
-        return [
+        filtered_books = [
             book for book in books
             if filter_genre(book, genre_filter) and filter_price(book, price_min, price_max)
         ]
+        return sorted(filtered_books, key=lambda b: b.get("volumeInfo", {}).get("averageRating", 0), reverse=True)
     else:
         st.error(f"Error fetching data: {response.status_code}")
+        try:
+            error_details = response.json()
+            st.json(error_details)
+        except ValueError:
+            st.write("No additional error details available.")
         return []
 
 # Function to filter books by genre
@@ -50,7 +58,7 @@ def filter_price(book, price_min, price_max):
     sale_info = book.get("saleInfo", {})
     retail_price = sale_info.get("retailPrice")
     if not retail_price or "amount" not in retail_price:
-        return True
+        return True  # Keep books without a defined price
     price = retail_price["amount"]
     return price_min <= price <= price_max
 
@@ -66,8 +74,10 @@ def extract_book_info(book):
     average_rating = volume_info.get("averageRating", "Not rated")
     thumbnail = volume_info.get("imageLinks", {}).get("thumbnail", None)
     user_rating = st.session_state.user_ratings.get(title, "Not rated yet")
+    
     if price != "Not available":
         price = f"{price} {currency}"
+    
     return {
         "title": title,
         "authors": authors,
@@ -78,17 +88,17 @@ def extract_book_info(book):
         "user_rating": user_rating,
     }
 
-# Function to recommend books based on user ratings
-def recommend_books_based_on_ratings(books, user_ratings):
+#Function to recommend books based on user ratings
+def recommend_books_based_on_ratings (books, user_ratings):
     book_data = []
-    for book in books:
-        info = extract_book_info(book)
-        book_data.append({
-            "title": info["title"],
-            "authors": info["authors"],
-            "categories": info["categories"],
-            "average_rating": info["average_rating"],
-            "user_rating": user_ratings.get(info["title"], None),
+    for book in books: 
+        info = extract_book_info (book)
+        book_data.append ({
+            "title":info["title"],
+            "authors":info["authors"],
+            "categories":info["categories"],
+            "average_rating":info["average_rating"],
+            "user_rating":user_ratings.get(info["title"], None),
         })
     df = pd.DataFrame(book_data)
     if df.empty:
@@ -96,38 +106,140 @@ def recommend_books_based_on_ratings(books, user_ratings):
     rated_books = df[df["user_rating"].notnull()]
     if rated_books.empty:
         return []
-    df["features"] = df["authors"] + " " + df["categories"]
-    tfidf = TfidfVectorizer(stop_words="english")
-    tfidf_matrix = tfidf.fit_transform(df["features"])
-    similarity_matrix = cosine_similarity(tfidf_matrix, tfidf_matrix)
+    df["features"]=df["authors"]+" "+ df["categories"]
+    tfidf=TfidfVectorizer(stop_words="english")
+    tfidf_matrix=tfidf.fit_transform(df["features"])
+    similarity_matrix=cosine_similarity(tfidf_matrix, tfidf_matrix)
     recommendations = []
     for _, rated_book in rated_books.iterrows():
-        book_index = df.index[df["title"] == rated_book["title"]].tolist()[0]
+        book_index = df.index [df["title"] == rated_book ["title"]].tolist()[0]
         similar_books = list(enumerate(similarity_matrix[book_index]))
         similar_books = sorted(similar_books, key=lambda x: x[1], reverse=True)
         for idx, _ in similar_books[1:6]:
-            if df.iloc[idx]["title"] not in rated_books["title"].values:
+            if df.iloc [idx]["title"] not in rated_books ["title"].values:
                 recommendations.append(df.iloc[idx])
-    recommendations_df = pd.DataFrame(recommendations).drop_duplicates(subset="title")
+    recommendations_df = pd.DataFrame(recommendations).drop_duplicates (subset="title")
     return recommendations_df.to_dict(orient="records")
+
+#Function to change theme between dark and light
+def set_theme(theme):
+    if theme == "Dark":
+        st.markdown(
+            """
+            <style>
+            /* Main app styling */
+            body, .stApp {
+                background-color: #1e1e1e;
+                color: white;
+            }
+
+            /* Ensure text in main section is white */
+            .stApp div, .stApp span, .stApp p, .stApp h1, .stApp h2, .stApp h3 {
+                color: white !important;
+            }
+
+            /* Sidebar styling */
+            section[data-testid="stSidebar"] {
+                background-color: #2c2c2c !important;
+                color: white;
+            }
+            section[data-testid="stSidebar"] .css-17eq0hr {
+                color: white;
+            }
+
+            /* Sidebar header and text */
+            section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, 
+            section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] p,
+            section[data-testid="stSidebar"] label, section[data-testid="stSidebar"] span {
+                color: white !important;
+            }
+
+            /* Sidebar buttons and inputs */
+            section[data-testid="stSidebar"] button, section[data-testid="stSidebar"] input, 
+            section[data-testid="stSidebar"] select, section[data-testid="stSidebar"] textarea {
+                background-color: #444;
+                border: 1px solid #666;
+            }
+
+            /* Sidebar buttons' text color specifically set */
+            section[data-testid="stSidebar"] button div {
+                color: black !important; /* Ensures button text remains black */
+            }
+
+            section[data-testid="stSidebar"] button:hover {
+                background-color: #555;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+    elif theme == "Light":
+        st.markdown(
+            """
+            <style>
+            /* Main app styling */
+            body, .stApp {
+                background-color: #ffffff;
+                color: black;
+            }
+
+            /* Ensure text in main section is black */
+            .stApp div, .stApp span, .stApp p, .stApp h1, .stApp h2, .stApp h3 {
+                color: black !important;
+            }
+
+            /* Sidebar styling */
+            section[data-testid="stSidebar"] {
+                background-color: #f5f5f5 !important;
+                color: black;
+            }
+            section[data-testid="stSidebar"] .css-17eq0hr {
+                color: black;
+            }
+
+            /* Sidebar header and text */
+            section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, 
+            section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] p,
+            section[data-testid="stSidebar"] label, section[data-testid="stSidebar"] span {
+                color: black !important;
+            }
+
+            /* Sidebar buttons and inputs */
+            section[data-testid="stSidebar"] button, section[data-testid="stSidebar"] input, 
+            section[data-testid="stSidebar"] select, section[data-testid="stSidebar"] textarea {
+                background-color: #fff;
+                color: black;
+                border: 1px solid #ccc;
+            }
+
+            section[data-testid="stSidebar"] button:hover {
+                background-color: #eee;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
 
 # Streamlit App Layout
 st.title("Tale Finder")
-st.markdown("Enter a book or author you liked, and get recommendations!")
+st.markdown("Rate a book you read, and get recommendations what to read next!")
 
-# Sidebar for navigation
+# Sidebar for navigation and theme selection
 st.sidebar.title("Discover Top Books")
+theme = st.sidebar.radio("Choose Theme", ["Light", "Dark"]) #Add theme toggle
+set_theme(theme) #Apply selected theme
+
 genres_sidebar = [
     "All Genres", "Fiction", "Science", 
     "Mystery", "History", "Biography"
 ]
 selected_genre = st.sidebar.radio("Select a genre:", genres_sidebar)
 
-# Display top books in sidebar
+#Display top books in sidebar
 if selected_genre != "All Genres":
     st.sidebar.subheader(f"Top books in {selected_genre}")
     sidebar_books = fetch_books("", selected_genre, 0, 100, default_query=True)
-    for book in sidebar_books[:5]:  # Show top 5 books in the sidebar
+    for book in sidebar_books[:5]: #Show top 5 books in the sidebar
         info = extract_book_info(book)
         st.sidebar.markdown(f"**{info['title']}**")
         st.sidebar.markdown(f"by {info['authors']}")
@@ -149,13 +261,13 @@ if page == "Book Recommendations":
     st.markdown("Filter by price:")
     price_min, price_max = st.slider("Select price range (in USD)", 0, 100, (0, 100))
 
-    if st.button("Show recommendations"):
+    if st.button("Rate books"):
         default_query = query.strip() == ""
-        # Reset book results for new searches
-        st.session_state.books = fetch_books(query, genre_filter, price_min, price_max, default_query=default_query)
-    
-    books = st.session_state.books
-
+        books = fetch_books(query, genre_filter, price_min, price_max, default_query=default_query)
+        st.session_state.books = books  # Save books in session state
+    else:
+        books = st.session_state.get("books", [])
+        
     if not books:
         st.info("No results found. Try another search term or adjust the filters.")
     else:
@@ -190,42 +302,26 @@ elif page == "My Ratings and Visualizations":
     if not st.session_state.user_ratings:
         st.info("No ratings available. Go to 'Book Recommendations' and rate books to see insights.")
     else:
-        # Collect book data with ratings and genres
-        rated_books = []
-        for book in st.session_state.books:
-            info = extract_book_info(book)
-            if info["title"] in st.session_state.user_ratings:
-                rated_books.append({
-                    "Title": info["title"],
-                    "Rating": st.session_state.user_ratings[info["title"]],
-                    "Genre": info["categories"],
-                })
+        st.subheader("Ratings Distribution")
 
-        df = pd.DataFrame(rated_books)
-        if df.empty:
-            st.info("No genres found for rated books.")
-        else:
-            # Calculate average rating per genre
-            df["Genre"] = df["Genre"].str.split(", ")  # Split multiple genres
-            exploded_df = df.explode("Genre")  # Handle multiple genres per book
-            genre_avg_ratings = (
-                exploded_df.groupby("Genre")["Rating"].mean().sort_values(ascending=False)
-            )
-
-            # Bar chart of average ratings by genre
-            st.subheader("Average Ratings by Genre")
-            plt.figure(figsize=(10, 5))
-            genre_avg_ratings.plot(kind="bar")
-            plt.title("Average Ratings by Genre")
-            plt.xlabel("Genre")
-            plt.ylabel("Average Rating")
-            st.pyplot(plt)
+        # Create a histogram of the ratings
+        ratings = list(st.session_state.user_ratings.values())
+        plt.figure(figsize=(8, 4))
+        sns.histplot(ratings, bins=5, kde=False, color="blue")
+        plt.title("Your Ratings Distribution")
+        plt.xlabel("Ratings")
+        plt.ylabel("Frequency")
+        st.pyplot(plt)
 
         st.subheader("Ratings Table")
-        st.table(df)
+        rated_books = [
+            {"Title": title, "Rating": rating}
+            for title, rating in st.session_state.user_ratings.items()
+        ]
+        st.table(rated_books)
 
-        # Content-based Recommendations
-        st.subheader("New Recommendations Based on Your Ratings")
+        #Content-based Recommendations
+        st.subheader ("New Recommendations Based on Your Ratings")
         if "books" in st.session_state and st.session_state.user_ratings:
             recommendations = recommend_books_based_on_ratings(
                 st.session_state.books,
@@ -239,7 +335,7 @@ elif page == "My Ratings and Visualizations":
                     st.markdown(f"**Genre:** {rec['categories']}")
                     st.markdown(f"**Rating:** {rec['average_rating']}")
                     st.markdown("---")
-            else:
+            else: 
                 st.info("No recommendations available yet. Rate more books to get personalized recommendations!")
         else:
             st.info("No recommendations available. Ensure you have rated books and fetched books from the API.")
